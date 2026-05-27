@@ -1,10 +1,18 @@
 import axios from 'axios'
+import JSONbig from 'json-bigint'
 import { ElMessage } from 'element-plus'
 import router from '../router'
 
 const request = axios.create({
   baseURL: '/api',
-  timeout: 8000 // 考虑到未来可能接入区块链或AI，超时时间稍微放宽到 8s
+  timeout: 8000,
+  transformResponse: [function (data) {
+    try {
+      return JSONbig.parse(data)
+    } catch (e) {
+      return data
+    }
+  }]
 })
 
 // 请求拦截器

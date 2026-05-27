@@ -9,6 +9,8 @@ const Publish = () => import('../views/Publish.vue')
 const Message = () => import('../views/Message.vue')
 const Mine = () => import('../views/Mine.vue')
 const Detail = () => import('../views/Detail.vue')
+const OrderConfirm = () => import('../views/OrderConfirm.vue')
+const OrderDetail = () => import('../views/OrderDetail.vue')
 
 
 const routes = [
@@ -28,6 +30,18 @@ const routes = [
         name: 'GoodsDetail', 
         component: Detail,
         meta: { title: '商品详情' } 
+      },
+      { 
+        path: 'order/confirm', 
+        name: 'OrderConfirm', 
+        component: OrderConfirm,
+        meta: { title: '确认订单' } 
+      },
+      { 
+        path: 'order/detail', 
+        name: 'OrderDetail', 
+        component: OrderDetail,
+        meta: { title: '订单详情' } 
       }
     ]
   }

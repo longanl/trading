@@ -29,7 +29,7 @@
           >
             <div class="image-wrapper">
               <el-image 
-                :src="item.image" 
+                :src="item.imageUrls[0]"
                 fit="cover"
                 class="goods-image"
                 lazy

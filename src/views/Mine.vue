@@ -28,8 +28,9 @@
           <el-menu-item index="info">个人信息</el-menu-item>
           <el-menu-item index="release">我发布的</el-menu-item>
           <el-menu-item index="buy">我买到的</el-menu-item>
-          <el-menu-item index="collect">我的收藏</el-menu-item>
+          <el-menu-item index="sell">我卖出的</el-menu-item>
           <el-menu-item index="wallet">账单流水</el-menu-item>
+          <el-menu-item index="address">收货地址</el-menu-item>
         </el-menu>
       </div>
 
@@ -73,8 +74,17 @@
                    <el-input v-if="isEditing" v-model="infoForm.nickname" />
                    <span v-else>{{ userInfo.nickname || '未设置' }}</span>
                  </el-form-item>
-                 <el-form-item v-if="isEditing" label="头像URL">
-                   <el-input v-model="infoForm.avatar" />
+                 <el-form-item v-if="isEditing" label="头像">
+                   <el-upload
+                     class="avatar-uploader"
+                     :show-file-list="false"
+                     :auto-upload="false"
+                     :on-change="handleAvatarChange"
+                     accept="image/*"
+                   >
+                     <el-avatar :size="80" :src="infoForm.avatar || 'https://api.dicebear.com/8.x/rings/svg?seed=longan'" />
+                     <div class="avatar-tip">点击更换头像</div>
+                   </el-upload>
                  </el-form-item>
                  <el-form-item v-if="isEditing">
                    <el-button type="primary" @click="saveInfo">保存</el-button>
@@ -194,6 +204,69 @@
               />
             </div>
 
+            <!-- 我买到的 -->
+            <div v-if="activeMenu === 'buy'">
+              <h3 class="section-title">我买到的</h3>
+              <div class="filter-bar" style="margin-bottom: 20px;">
+                <el-radio-group :model-value="orderStore.buyQuery.status" size="small" @change="orderStore.setBuyStatus">
+                  <el-radio-button :label="null">全部</el-radio-button>
+                  <el-radio-button :label="0">待付款</el-radio-button>
+                  <el-radio-button :label="1">待发货</el-radio-button>
+                  <el-radio-button :label="2">待收货</el-radio-button>
+                  <el-radio-button :label="3">已完成</el-radio-button>
+                </el-radio-group>
+              </div>
+              <div v-loading="orderStore.buyLoading">
+                <div v-for="item in orderStore.buyList" :key="item.orderId" class="order-card" @click="router.push(`/order/detail?id=${item.orderId}`)">
+                  <el-image :src="item.imageUrl" fit="cover" class="order-img" />
+                  <div class="order-info">
+                    <div class="order-title">{{ item.title }}</div>
+                    <div class="order-meta">
+                      <span class="order-price">￥{{ item.price }}</span>
+                      <el-tag :type="orderStore.statusTagType(item.status)" size="small">{{ orderStore.statusText(item.status) }}</el-tag>
+                    </div>
+                    <div class="order-time">{{ item.createTime?.replace('T', ' ').substring(0, 19) }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="pagination-wrapper" v-if="orderStore.buyTotal > 0">
+                <el-pagination :current-page="orderStore.buyQuery.page" :page-size="orderStore.buyQuery.size"
+                  layout="prev, pager, next, total" :total="orderStore.buyTotal" background @current-change="(p) => { orderStore.buyQuery.page = p; orderStore.fetchBuyOrders() }" />
+              </div>
+              <el-empty v-if="!orderStore.buyLoading && orderStore.buyList.length === 0" description="暂无订单" />
+            </div>
+
+            <!-- 我卖出的 -->
+            <div v-if="activeMenu === 'sell'">
+              <h3 class="section-title">我卖出的</h3>
+              <div class="filter-bar" style="margin-bottom: 20px;">
+                <el-radio-group :model-value="orderStore.sellQuery.status" size="small" @change="orderStore.setSellStatus">
+                  <el-radio-button :label="null">全部</el-radio-button>
+                  <el-radio-button :label="1">待发货</el-radio-button>
+                  <el-radio-button :label="2">待收货</el-radio-button>
+                  <el-radio-button :label="3">已完成</el-radio-button>
+                </el-radio-group>
+              </div>
+              <div v-loading="orderStore.sellLoading">
+                <div v-for="item in orderStore.sellList" :key="item.orderId" class="order-card" @click="router.push(`/order/detail?id=${item.orderId}`)">
+                  <el-image :src="item.imageUrl" fit="cover" class="order-img" />
+                  <div class="order-info">
+                    <div class="order-title">{{ item.title }}</div>
+                    <div class="order-meta">
+                      <span class="order-price">￥{{ item.price }}</span>
+                      <el-tag :type="orderStore.statusTagType(item.status)" size="small">{{ orderStore.statusText(item.status) }}</el-tag>
+                    </div>
+                    <div class="order-time">{{ item.createTime?.replace('T', ' ').substring(0, 19) }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="pagination-wrapper" v-if="orderStore.sellTotal > 0">
+                <el-pagination :current-page="orderStore.sellQuery.page" :page-size="orderStore.sellQuery.size"
+                  layout="prev, pager, next, total" :total="orderStore.sellTotal" background @current-change="(p) => { orderStore.sellQuery.page = p; orderStore.fetchSellOrders() }" />
+              </div>
+              <el-empty v-if="!orderStore.sellLoading && orderStore.sellList.length === 0" description="暂无订单" />
+            </div>
+
             <div v-if="activeMenu === 'wallet'">
               <h3 class="section-title">账单流水</h3>
 
@@ -250,27 +323,83 @@
                 description="暂无流水记录"
               />
             </div>
+
+            <!-- 收货地址 -->
+            <div v-if="activeMenu === 'address'">
+              <div class="section-header">
+                <h3 class="section-title">收货地址</h3>
+                <el-button type="primary" icon="Plus" @click="showAddressDialog()">添加新地址</el-button>
+              </div>
+
+              <div v-loading="addressLoading">
+                <div v-for="item in addressList" :key="item.id" class="address-card">
+                  <div class="address-info">
+                    <div class="address-header">
+                      <span class="receiver">{{ item.receiver }}</span>
+                      <span class="phone">{{ item.phone }}</span>
+                      <el-tag v-if="item.isDefault === 1" type="danger" size="small">默认</el-tag>
+                    </div>
+                    <div class="address-detail">{{ item.address }}</div>
+                  </div>
+                  <div class="address-actions">
+                    <el-button v-if="item.isDefault !== 1" link type="primary" @click="handleSetDefault(item.id)">设为默认</el-button>
+                    <el-button link type="primary" @click="showAddressDialog(item)">编辑</el-button>
+                    <el-button link type="danger" @click="handleDeleteAddress(item.id)">删除</el-button>
+                  </div>
+                </div>
+              </div>
+
+              <el-empty v-if="!addressLoading && addressList.length === 0" description="暂无收货地址" />
+            </div>
             
             </div>
         </transition>
       </div>
     </div>
   </div>
+
+  <!-- 地址编辑弹窗 -->
+  <el-dialog v-model="addressDialogVisible" :title="editingAddress ? '编辑地址' : '添加地址'" width="500px">
+    <el-form :model="addressForm" :rules="addressRules" ref="addressFormRef" label-width="80px">
+      <el-form-item label="收件人" prop="receiver">
+        <el-input v-model="addressForm.receiver" placeholder="请输入收件人姓名" />
+      </el-form-item>
+      <el-form-item label="手机号" prop="phone">
+        <el-input v-model="addressForm.phone" placeholder="请输入手机号" maxlength="11" />
+      </el-form-item>
+      <el-form-item label="详细地址" prop="address">
+        <el-input v-model="addressForm.address" type="textarea" :rows="3" placeholder="请输入详细地址" />
+      </el-form-item>
+      <el-form-item label="默认地址">
+        <el-switch v-model="addressForm.isDefault" :active-value="1" :inactive-value="0" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="addressDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="addressSaving" @click="handleSaveAddress">保存</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { 
-  User, Sell, ShoppingBag, Star, Wallet, Location, Shop, Edit, Money, Trophy
+  User, Sell, ShoppingBag, Star, Wallet, Location, Shop, Edit, Money, Trophy, Plus, Delete
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMyGoodsApi } from '@/api/goods'
+import { useOrderStore } from '@/stores/order'
 import {
   getUserInfoApi, updateUserInfoApi, getUserProfileApi, setUserProfileApi,
   getWalletApi, getCreditApi, getWalletLogApi, updateUserProfileApi
 } from '@/api/user'
+import { getAddressListApi, addAddressApi, updateAddressApi, deleteAddressApi, setDefaultAddressApi } from '@/api/address'
+import { uploadUserAvatarApi } from '@/api/common'
 import { useUserStore } from '@/stores/user'
 
+const router = useRouter()
+const orderStore = useOrderStore()
 const activeMenu = ref('info')
 const isEditing = ref(false)
 
@@ -329,6 +458,28 @@ const myGoodsQuery = reactive({
   page: 1,
   size: 10
 })
+
+// 收货地址相关
+const addressLoading = ref(false)
+const addressList = ref([])
+const addressDialogVisible = ref(false)
+const addressSaving = ref(false)
+const editingAddress = ref(null)
+const addressFormRef = ref(null)
+const addressForm = reactive({
+  receiver: '',
+  phone: '',
+  address: '',
+  isDefault: 0
+})
+const addressRules = {
+  receiver: [{ required: true, message: '请输入收件人', trigger: 'blur' }],
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1\d{10}$/, message: '手机号格式不正确', trigger: 'blur' }
+  ],
+  address: [{ required: true, message: '请输入详细地址', trigger: 'blur' }]
+}
 
 // 加载用户基本信息
 const loadUserInfo = async () => {
@@ -424,6 +575,22 @@ const loadMyGoods = async () => {
   }
 }
 
+// 头像上传
+const handleAvatarChange = async (uploadFile) => {
+  if (!uploadFile.raw) return
+  try {
+    const res = await uploadUserAvatarApi(uploadFile.raw)
+    if (res.code === 200) {
+      infoForm.avatar = res.data
+      ElMessage.success('头像上传成功')
+    } else {
+      ElMessage.error(res.msg || '上传失败')
+    }
+  } catch (e) {
+    ElMessage.error('上传失败')
+  }
+}
+
 // 保存基本信息
 const saveInfo = async () => {
   try {
@@ -487,10 +654,103 @@ const handleMenuSelect = (index) => {
   activeMenu.value = index
   if (index === 'release') loadMyGoods()
   if (index === 'wallet') loadWalletLog()
-  if (index === 'info') {
-    loadUserProfile()
+  if (index === 'info') loadUserProfile()
+  if (index === 'buy') orderStore.fetchBuyOrders()
+  if (index === 'sell') orderStore.fetchSellOrders()
+  if (index === 'address') loadAddressList()
+}
+
+// 加载收货地址列表
+const loadAddressList = async () => {
+  addressLoading.value = true
+  try {
+    const res = await getAddressListApi()
+    if (res.code === 200) {
+      addressList.value = res.data || []
+    }
+  } catch (e) {
+    console.error('获取地址列表失败:', e)
+  } finally {
+    addressLoading.value = false
   }
 }
+
+// 显示地址编辑弹窗
+const showAddressDialog = (addr) => {
+  editingAddress.value = addr || null
+  if (addr) {
+    addressForm.receiver = addr.receiver
+    addressForm.phone = addr.phone
+    addressForm.address = addr.address
+    addressForm.isDefault = addr.isDefault
+  } else {
+    addressForm.receiver = ''
+    addressForm.phone = ''
+    addressForm.address = ''
+    addressForm.isDefault = 0
+  }
+  addressDialogVisible.value = true
+}
+
+// 保存收货地址
+const handleSaveAddress = async () => {
+  if (!addressFormRef.value) return
+  await addressFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    addressSaving.value = true
+    try {
+      let res
+      if (editingAddress.value) {
+        res = await updateAddressApi(editingAddress.value.id, addressForm)
+      } else {
+        res = await addAddressApi(addressForm)
+      }
+      if (res.code === 200) {
+        ElMessage.success(editingAddress.value ? '地址更新成功' : '地址添加成功')
+        addressDialogVisible.value = false
+        loadAddressList()
+      } else {
+        ElMessage.error(res.msg || '操作失败')
+      }
+    } catch (e) {
+      ElMessage.error('操作失败')
+    } finally {
+      addressSaving.value = false
+    }
+  })
+}
+
+// 删除收货地址
+const handleDeleteAddress = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定删除该地址？', '删除地址', { type: 'warning' })
+    const res = await deleteAddressApi(id)
+    if (res.code === 200) {
+      ElMessage.success('地址已删除')
+      loadAddressList()
+    } else {
+      ElMessage.error(res.msg || '删除失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+// 设置默认地址
+const handleSetDefault = async (id) => {
+  try {
+    const res = await setDefaultAddressApi(id)
+    if (res.code === 200) {
+      ElMessage.success('已设为默认地址')
+      loadAddressList()
+    } else {
+      ElMessage.error(res.msg || '操作失败')
+    }
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
 
 // 业务类型文本
 const businessTypeText = (type) => {
@@ -762,5 +1022,132 @@ onMounted(async () => {
   border-left: 4px solid #eab308;
   padding-left: 15px;
   font-size: 16px;
+}
+
+/* 订单卡片 */
+.order-card {
+  display: flex;
+  gap: 15px;
+  padding: 15px;
+  margin-bottom: 12px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.order-card:hover {
+  background: #f0f1f3;
+  transform: translateY(-1px);
+}
+.order-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.order-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.order-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.order-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.order-price {
+  color: #ff5000;
+  font-weight: bold;
+  font-size: 16px;
+}
+.order-time {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* 收货地址样式 */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.address-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.address-card:hover {
+  background: #f0f1f3;
+}
+
+.address-info {
+  flex: 1;
+}
+
+.address-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.receiver {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 15px;
+}
+
+.phone {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.address-detail {
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.address-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* 头像上传样式 */
+.avatar-uploader {
+  text-align: center;
+}
+
+.avatar-uploader .el-avatar {
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.avatar-uploader .el-avatar:hover {
+  opacity: 0.8;
+}
+
+.avatar-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #94a3b8;
 }
 </style>

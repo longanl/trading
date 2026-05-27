@@ -7,5 +7,5 @@ export function getLevel1Api() {
 
 // 获取子分类
 export function getChildrenApi(parentId) {
-  return request({ url: `/category/children/${parentId}`, method: 'get' })
+  return request({ url: `/category/children/${String(parentId)}`, method: 'get' })
 }

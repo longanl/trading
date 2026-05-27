@@ -12,7 +12,7 @@ export const getGoodsListApi = (params) => {
 
 // 获取商品详情
 export const getGoodsDetailApi = (id) => {
-  return request.get(`/goods/${id}`)
+  return request.get(`/goods/${String(id)}`)
 }
 
 // 获取我的商品

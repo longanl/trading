@@ -86,7 +86,7 @@
                   <el-button type="warning" class="chat-btn" size="large">
                     <el-icon><ChatDotRound /></el-icon> 聊一聊
                   </el-button>
-                  <el-button type="info" class="buy-btn" size="large">
+                  <el-button type="info" class="buy-btn" size="large" @click="handleBuy">
                     立即购买
                   </el-button>
                 </div>
@@ -105,12 +105,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, ArrowRight, ChatDotRound, Star, CircleCheck, Shop } from '@element-plus/icons-vue'
 import { getGoodsDetailApi } from '@/api/goods'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
+const router = useRouter()
 const goods = ref(null)
 const loading = ref(true)
 const currentImgIndex = ref(0) // 当前展示图片的索引
@@ -141,6 +142,19 @@ const loadDetail = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 跳转下单确认页
+const handleBuy = () => {
+  if (!goods.value) return
+  if (goods.value.status !== 1) {
+    ElMessage.warning('该商品已不可购买')
+    return
+  }
+  if(!goods.value.id){
+    console.log("goodsid为空")
+  }
+  router.push(`/order/confirm?goodsId=${String(goods.value.id)}`)
 }
 
 // 图片切换逻辑
