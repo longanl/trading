@@ -19,3 +19,8 @@ export const getGoodsDetailApi = (id) => {
 export const getMyGoodsApi = (params) => {
   return request.get('/goods/my', { params })
 }
+
+// 修改商品
+export const updateGoodsApi = (id, data) => {
+  return request.put(`/goods/${id}`, data)
+}

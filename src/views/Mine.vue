@@ -13,9 +13,9 @@
               </div>
             </div>
           </div>
-          <el-button type="primary" round icon="Edit" @click="isEditing = !isEditing">
-            编辑资料
-          </el-button>
+           <el-button type="primary" round icon="Edit" @click="showProfileDialog">
+             编辑资料
+           </el-button>
         </div>
 
         <el-menu
@@ -70,26 +70,6 @@
                  <el-form-item label="用户名">
                    <el-input :model-value="userInfo.username" disabled />
                  </el-form-item>
-                 <el-form-item label="昵称">
-                   <el-input v-if="isEditing" v-model="infoForm.nickname" />
-                   <span v-else>{{ userInfo.nickname || '未设置' }}</span>
-                 </el-form-item>
-                 <el-form-item v-if="isEditing" label="头像">
-                   <el-upload
-                     class="avatar-uploader"
-                     :show-file-list="false"
-                     :auto-upload="false"
-                     :on-change="handleAvatarChange"
-                     accept="image/*"
-                   >
-                     <el-avatar :size="80" :src="infoForm.avatar || 'https://api.dicebear.com/8.x/rings/svg?seed=longan'" />
-                     <div class="avatar-tip">点击更换头像</div>
-                   </el-upload>
-                 </el-form-item>
-                 <el-form-item v-if="isEditing">
-                   <el-button type="primary" @click="saveInfo">保存</el-button>
-                   <el-button @click="isEditing = false">取消</el-button>
-                 </el-form-item>
                </el-form>
 
                <el-divider />
@@ -119,8 +99,6 @@
             
             <div v-if="activeMenu === 'release'">
               <h3 class="section-title">我发布的商品</h3>
-              
-              <!-- 状态筛选 -->
               <div class="filter-bar" style="margin-bottom: 20px;">
                 <el-radio-group v-model="myGoodsQuery.status" size="small" @change="handleStatusChange">
                   <el-radio-button :label="1">上架中</el-radio-button>
@@ -142,10 +120,11 @@
                       class="goods-card" 
                       :body-style="{ padding: '0px' }" 
                       shadow="hover"
+                      @click="router.push(`/goods/detail?id=${item.id}`)"
                     >
                       <div class="image-wrapper">
                         <el-image 
-                          :src="item.imageUrl" 
+                          :src="item.imageUrls?.[0]" 
                           fit="cover"
                           class="goods-image"
                           lazy
@@ -177,7 +156,15 @@
                               {{ item.qualityText }}
                             </el-tag>
                           </div>
-                          <div class="view-count">浏览 {{ item.viewCount }}</div>
+                          <div class="card-actions">
+                            <span class="view-count">浏览 {{ item.viewCount }}</span>
+                            <el-icon 
+                              class="edit-icon" 
+                              @click.stop="router.push(`/goods/edit?id=${item.id}`)"
+                            >
+                              <Edit />
+                            </el-icon>
+                          </div>
                         </div>
                         <div class="goods-time">{{ item.createTime }}</div>
                       </div>
@@ -379,6 +366,31 @@
       <el-button type="primary" :loading="addressSaving" @click="handleSaveAddress">保存</el-button>
     </template>
   </el-dialog>
+
+  <!-- 编辑资料弹窗 -->
+  <el-dialog v-model="profileDialogVisible" title="编辑资料" width="500px">
+    <el-form :model="infoForm" ref="profileFormRef" label-width="80px">
+      <el-form-item label="昵称">
+        <el-input v-model="infoForm.nickname" placeholder="请输入昵称" maxlength="20" />
+      </el-form-item>
+      <el-form-item label="头像">
+        <el-upload
+          class="avatar-uploader"
+          :show-file-list="false"
+          :auto-upload="false"
+          :on-change="handleAvatarChange"
+          accept="image/*"
+        >
+          <el-avatar :size="80" :src="infoForm.avatar || 'https://api.dicebear.com/8.x/rings/svg?seed=longan'" />
+          <div class="avatar-tip">点击更换头像</div>
+        </el-upload>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="profileDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="profileSaving" @click="saveInfo">保存</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -401,7 +413,6 @@ import { useUserStore } from '@/stores/user'
 const router = useRouter()
 const orderStore = useOrderStore()
 const activeMenu = ref('info')
-const isEditing = ref(false)
 
 // 用户基本信息
 const userInfo = reactive({
@@ -437,6 +448,15 @@ const infoForm = reactive({
   nickname: '',
   avatar: ''
 })
+const profileDialogVisible = ref(false)
+const profileSaving = ref(false)
+const profileFormRef = ref(null)
+
+const showProfileDialog = () => {
+  infoForm.nickname = userInfo.nickname
+  infoForm.avatar = userInfo.avatar
+  profileDialogVisible.value = true
+}
 
 // 钱包流水相关
 const walletLogLoading = ref(false)
@@ -456,7 +476,7 @@ const myGoodsTotal = ref(0)
 const myGoodsQuery = reactive({
   status: 1,
   page: 1,
-  size: 10
+  size: 12
 })
 
 // 收货地址相关
@@ -593,17 +613,22 @@ const handleAvatarChange = async (uploadFile) => {
 
 // 保存基本信息
 const saveInfo = async () => {
+  profileSaving.value = true
   try {
     const res = await updateUserInfoApi(infoForm)
     if (res.code === 200) {
       ElMessage.success('信息更新成功')
-      isEditing.value = false
+      profileDialogVisible.value = false
       await loadUserInfo()
       const userStore = useUserStore()
       await userStore.fetchUserInfo()
+    } else {
+      ElMessage.error(res.msg || '更新失败')
     }
   } catch (e) {
     ElMessage.error('更新失败')
+  } finally {
+    profileSaving.value = false
   }
 }
 
@@ -984,6 +1009,23 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-icon {
+  font-size: 16px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.edit-icon:hover {
+  color: #0ea5e9;
 }
 
 .status-info {

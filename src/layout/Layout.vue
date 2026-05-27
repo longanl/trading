@@ -71,7 +71,6 @@
             <el-menu-item index="/message">
               <el-icon><ChatLineRound /></el-icon>
               <span>消息中心</span>
-<!--              <el-badge :value="5" class="msg-badge" type="danger" />-->
             </el-menu-item>
             <el-menu-item index="/mine">
               <el-icon><Management /></el-icon>
@@ -86,11 +85,7 @@
         </el-aside>
 
         <el-main class="custom-main">
-          <router-view v-slot="{ Component }">
-            <transition name="el-fade-in" mode="out-in">
-              <component :is="Component" />
-            </transition>
-          </router-view>
+          <router-view />
         </el-main>
       </el-container>
     </el-container>
@@ -247,3 +242,4 @@ const logout = () => {
   color: #94a3b8; font-size: 12px;
 }
 </style>
+

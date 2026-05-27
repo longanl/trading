@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
-import { getMyOrderApi, getOrderDetailApi, buyOrderApi, confirmOrderApi, cancelOrderApi, applyRefundApi } from '@/api/order'
+import { getMyOrderApi, getOrderDetailApi, buyOrderApi, confirmOrderApi, cancelOrderApi, applyRefundApi, sendOrderApi } from '@/api/order'
 import { ElMessage } from 'element-plus'
 
 export const useOrderStore = defineStore('order', () => {
@@ -69,7 +69,14 @@ export const useOrderStore = defineStore('order', () => {
 
   // ========== 支付 ==========
   const payOrder = async (id) => {
+    console.log("调用支付api")
     const res = await buyOrderApi(id)
+    return res
+  }
+
+  // ========== 发货 ==========
+  const sendOrder = async (id, deliveryNo) => {
+    const res = await sendOrderApi(id, deliveryNo)
     return res
   }
 
@@ -124,7 +131,7 @@ export const useOrderStore = defineStore('order', () => {
     // 详情
     currentOrder, detailLoading, fetchOrderDetail,
     // 操作
-    payOrder, confirmOrder, cancelOrder, refundOrder,
+    payOrder, sendOrder, confirmOrder, cancelOrder, refundOrder,
     // 工具
     statusText, statusTagType
   }

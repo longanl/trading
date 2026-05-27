@@ -45,6 +45,7 @@
           <el-descriptions-item label="下单时间">{{ formatTime(order.createTime) }}</el-descriptions-item>
           <el-descriptions-item label="支付时间">{{ formatTime(order.payTime) || '未支付' }}</el-descriptions-item>
           <el-descriptions-item label="发货时间">{{ formatTime(order.sendTime) || '未发货' }}</el-descriptions-item>
+          <el-descriptions-item label="物流单号">{{ order.deliveryNo || '-' }}</el-descriptions-item>
           <el-descriptions-item label="成交金额">
             <span style="color:#ff5000;font-weight:bold;">￥{{ order.price }}</span>
           </el-descriptions-item>
@@ -56,6 +57,9 @@
         <template v-if="order.status === 0">
           <el-button type="primary" size="large" :loading="paying" @click="handlePay">去支付</el-button>
           <el-button size="large" :loading="cancelling" @click="handleCancel">取消订单</el-button>
+        </template>
+        <template v-if="order.status === 1 && isSeller">
+          <el-button type="primary" size="large" :loading="sending" @click="handleSend">发货</el-button>
         </template>
         <template v-if="order.status === 2">
           <el-button type="success" size="large" :loading="confirming" @click="handleConfirm">确认收货</el-button>
@@ -74,15 +78,20 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useOrderStore } from '@/stores/order'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
 const orderStore = useOrderStore()
+const userStore = useUserStore()
 const order = computed(() => orderStore.currentOrder)
+
+const isSeller = computed(() => userStore.userId && order.value?.sellerId === userStore.userId)
 
 const paying = ref(false)
 const cancelling = ref(false)
 const confirming = ref(false)
+const sending = ref(false)
 
 const statusStep = computed(() => {
   const map = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 0, 5: 3 }
@@ -97,6 +106,7 @@ const formatTime = (t) => {
 const handlePay = async () => {
   paying.value = true
   try {
+    console.log("开始支付")
     const res = await orderStore.payOrder(order.value.id)
     if (res.code === 200) {
       ElMessage.success('支付成功')
@@ -126,6 +136,27 @@ const handleCancel = async () => {
     if (e !== 'cancel') ElMessage.error('取消失败')
   } finally {
     cancelling.value = false
+  }
+}
+
+const handleSend = async () => {
+  try {
+    const { value } = await ElMessageBox.prompt('请输入物流单号', '发货', {
+      inputPlaceholder: '物流单号',
+      inputValidator: (v) => !!v || '请输入物流单号'
+    })
+    sending.value = true
+    const res = await orderStore.sendOrder(order.value.id, value)
+    if (res.code === 200) {
+      ElMessage.success('发货成功')
+      orderStore.fetchOrderDetail(order.value.id)
+    } else {
+      ElMessage.error(res.msg || '发货失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('发货失败')
+  } finally {
+    sending.value = false
   }
 }
 

@@ -54,8 +54,8 @@
               </div>
               <div class="goods-footer">
                 <div class="seller-info">
-                  <el-avatar :size="16" icon="UserFilled" />
-                  <span class="user-name">用户{{ item.userId }}</span>
+                  <el-avatar :size="16" :src="item.avatar" icon="UserFilled" />
+                  <span class="user-name">{{ item.nickname }}</span>
                 </div>
                 <el-tag size="small" type="success" effect="plain" class="quality-tag">
                   {{ getQualityText(item.quality) }}
@@ -99,9 +99,11 @@ const total = ref(0)
 const query = reactive({
   keyword: '',
   categoryId: null,
-  sort: 1, // 1:综合, 2:最新, 3:价格
+  minPrice: null,
+  maxPrice: null,
+  sort: 1,
   page: 1,
-  size: 10
+  size: 12
 })
 
 // 加载数据
@@ -150,6 +152,7 @@ const getQualityText = (quality) => {
 }
 
 onMounted(() => {
+  console.log("进入home")
   loadGoods()
 })
 </script>

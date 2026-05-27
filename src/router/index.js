@@ -23,6 +23,7 @@ const routes = [
     children: [
       { path: 'home', component: Home },
       { path: 'publish', component: Publish },
+      { path: 'goods/edit', name: 'GoodsEdit', component: Publish, meta: { title: '编辑商品' } },
       { path: 'message', component: Message },
       { path: 'mine', component: Mine },
       { 

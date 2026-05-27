@@ -5,7 +5,7 @@
         <div class="card-header">
           <div class="header-left">
             <el-icon class="header-icon"><CirclePlus /></el-icon>
-            <span class="header-title">发布闲置资产</span>
+            <span class="header-title">{{ isEdit ? '编辑商品' : '发布闲置资产' }}</span>
           </div>
           <el-tag type="primary" effect="plain" class="chain-status">
             <el-icon><Link /></el-icon> 准备接入 Web3 存证
@@ -114,7 +114,7 @@
           <div class="action-btns">
             <el-button @click="resetForm" size="large" class="cancel-btn">重置</el-button>
             <el-button type="primary" size="large" class="submit-btn" @click="submitForm">
-              立即发布资产
+              {{ isEdit ? '保存修改' : '立即发布资产' }}
             </el-button>
           </div>
         </div>
@@ -124,15 +124,21 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { CameraFilled, CirclePlus, Link, InfoFilled } from '@element-plus/icons-vue'
 import { uploadGoodsImgApi } from '@/api/common'
 import { getLevel1Api, getChildrenApi } from '@/api/category'
-import { publishProductApi } from '@/api/goods'
+import { publishProductApi, getGoodsDetailApi, updateGoodsApi } from '@/api/goods'
 import { ElMessage } from 'element-plus'
 
+const route = useRoute()
+const router = useRouter()
 const formRef = ref()
 const loading = ref(false)
+
+const isEdit = computed(() => !!route.query.id)
+const editId = computed(() => route.query.id || null)
 
 // 1. 对应后端的 GoodsDTO
 const goodsForm = reactive({
@@ -212,7 +218,34 @@ const handleRemove = (uploadFile) => {
   }
 }
 
-// 5. 提交发布
+// 5. 加载编辑数据
+const loadGoodsForEdit = async () => {
+  if (!editId.value) return
+  loading.value = true
+  try {
+    const res = await getGoodsDetailApi(editId.value)
+    if (res.code === 200) {
+      const data = res.data
+      goodsForm.title = data.title || ''
+      goodsForm.description = data.description || ''
+      goodsForm.price = data.price || 0
+      goodsForm.originalPrice = data.originalPrice || 0
+      goodsForm.categoryId = data.categoryId
+      goodsForm.quality = data.quality || 1
+      goodsForm.imageUrls = data.imageUrls || []
+    } else {
+      ElMessage.error(res.msg || '加载商品信息失败')
+      router.push('/mine')
+    }
+  } catch (err) {
+    ElMessage.error('加载商品信息失败')
+    router.push('/mine')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 6. 提交发布/修改
 const submitForm = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
@@ -223,15 +256,24 @@ const submitForm = async () => {
       
       loading.value = true
       try {
-        const res = await publishProductApi(goodsForm)
-        if (res.code === 200) {
-          ElMessage.success('资产发布成功！正在同步 Web3 存证...')
-          resetForm()
+        let res
+        if (isEdit.value) {
+          res = await updateGoodsApi(editId.value, goodsForm)
         } else {
-          ElMessage.error(res.msg || '发布失败')
+          res = await publishProductApi(goodsForm)
+        }
+        if (res.code === 200) {
+          ElMessage.success(isEdit.value ? '修改成功' : '资产发布成功！正在同步 Web3 存证...')
+          if (isEdit.value) {
+            router.push('/mine')
+          } else {
+            resetForm()
+          }
+        } else {
+          ElMessage.error(res.msg || '操作失败')
         }
       } catch (err) {
-        ElMessage.error('发布请求异常，请检查后端接口')
+        ElMessage.error('请求异常，请检查后端接口')
       } finally {
         loading.value = false
       }
@@ -243,6 +285,11 @@ const submitForm = async () => {
 const resetForm = () => {
   formRef.value.resetFields()
   goodsForm.imageUrls = []
+}
+
+// 初始化
+if (isEdit.value) {
+  loadGoodsForEdit()
 }
 
 // 校验规则
