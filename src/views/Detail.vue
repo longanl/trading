@@ -83,7 +83,7 @@
 
               <div class="action-footer">
                 <div class="main-btns">
-                  <el-button type="warning" class="chat-btn" size="large">
+                  <el-button type="warning" class="chat-btn" size="large" @click="handleChat">
                     <el-icon><ChatDotRound /></el-icon> 聊一聊
                   </el-button>
                   <el-button type="info" class="buy-btn" size="large" @click="handleBuy">
@@ -155,6 +155,11 @@ const handleBuy = () => {
     console.log("goodsid为空")
   }
   router.push(`/order/confirm?goodsId=${String(goods.value.id)}`)
+}
+
+const handleChat = () => {
+  if (!goods.value) return
+  router.push(`/message?targetId=${goods.value.userId}&goodsId=${goods.value.id}`)
 }
 
 // 图片切换逻辑

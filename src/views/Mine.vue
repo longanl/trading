@@ -201,6 +201,7 @@
                   <el-radio-button :label="1">待发货</el-radio-button>
                   <el-radio-button :label="2">待收货</el-radio-button>
                   <el-radio-button :label="3">已完成</el-radio-button>
+                  <el-radio-button :label="5">退款中</el-radio-button>
                 </el-radio-group>
               </div>
               <div v-loading="orderStore.buyLoading">
@@ -232,6 +233,7 @@
                   <el-radio-button :label="1">待发货</el-radio-button>
                   <el-radio-button :label="2">待收货</el-radio-button>
                   <el-radio-button :label="3">已完成</el-radio-button>
+                  <el-radio-button :label="5">退款中</el-radio-button>
                 </el-radio-group>
               </div>
               <div v-loading="orderStore.sellLoading">

@@ -54,16 +54,20 @@
 
       <!-- 操作按钮 -->
       <div class="action-bar">
-        <template v-if="order.status === 0">
+        <template v-if="order.status === 0 && isBuyer">
           <el-button type="primary" size="large" :loading="paying" @click="handlePay">去支付</el-button>
           <el-button size="large" :loading="cancelling" @click="handleCancel">取消订单</el-button>
         </template>
         <template v-if="order.status === 1 && isSeller">
           <el-button type="primary" size="large" :loading="sending" @click="handleSend">发货</el-button>
         </template>
-        <template v-if="order.status === 2">
+        <template v-if="order.status === 2 && isBuyer">
           <el-button type="success" size="large" :loading="confirming" @click="handleConfirm">确认收货</el-button>
           <el-button type="warning" size="large" @click="handleRefund">申请退款</el-button>
+        </template>
+        <template v-if="order.status === 5 && isSeller">
+          <el-button type="success" size="large" :loading="agreeing" @click="handleAgreeRefund">同意退款</el-button>
+          <el-button type="danger" size="large" :loading="rejecting" @click="handleRejectRefund">拒绝退款</el-button>
         </template>
         <el-button size="large" @click="router.push('/mine')">返回我的</el-button>
       </div>
@@ -87,11 +91,14 @@ const userStore = useUserStore()
 const order = computed(() => orderStore.currentOrder)
 
 const isSeller = computed(() => userStore.userId && order.value?.sellerId === userStore.userId)
+const isBuyer = computed(() => userStore.userId && order.value?.buyerId === userStore.userId)
 
 const paying = ref(false)
 const cancelling = ref(false)
 const confirming = ref(false)
 const sending = ref(false)
+const agreeing = ref(false)
+const rejecting = ref(false)
 
 const statusStep = computed(() => {
   const map = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 0, 5: 3 }
@@ -193,6 +200,42 @@ const handleRefund = async () => {
     }
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('申请失败')
+  }
+}
+
+const handleAgreeRefund = async () => {
+  try {
+    await ElMessageBox.confirm('同意退款后，款项将返还给买家，确定继续？', '同意退款', { type: 'warning' })
+    agreeing.value = true
+    const res = await orderStore.agreeRefund(order.value.id)
+    if (res.code === 200) {
+      ElMessage.success('已同意退款')
+      orderStore.fetchOrderDetail(order.value.id)
+    } else {
+      ElMessage.error(res.msg || '操作失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  } finally {
+    agreeing.value = false
+  }
+}
+
+const handleRejectRefund = async () => {
+  try {
+    await ElMessageBox.confirm('确定拒绝退款申请？订单将恢复为待收货状态。', '拒绝退款', { type: 'warning' })
+    rejecting.value = true
+    const res = await orderStore.rejectRefund(order.value.id)
+    if (res.code === 200) {
+      ElMessage.success('已拒绝退款')
+      orderStore.fetchOrderDetail(order.value.id)
+    } else {
+      ElMessage.error(res.msg || '操作失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  } finally {
+    rejecting.value = false
   }
 }
 
